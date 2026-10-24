@@ -48,10 +48,7 @@
                 <h2>ESTACIÓN DE OPERACIONES</h2>
             </div>
 
-            <div class="integrity-panel">
-                
-
-
+         
             <div class="integrity-panel">
                 <span>INTEGRIDAD DEL SISTEMA</span>
                 <strong id="integrityValue">100%</strong>
@@ -68,9 +65,12 @@
                 </div>
                 <span>PUNTOS: <strong id="scoreValue">0</strong></span>
             </div>
-<button id="soundToggle" class="close-button" type="button">
-    SONIDO: ACTIVADO
+
+            <button id="soundToggle" class="close-button" type="button">
+                SONIDO: ACTIVADO
+            </button>
         </header>
+
         <button id="restartButton" class="close-button" type="button">
     REINICIAR SISTEMA
 </button>
@@ -78,7 +78,8 @@
             <p class="room-label">SECTOR C-01 // OPERADOR: BRYAN EPSTEIN</p>
 
             <div class="monitor-wall">
-                <button class="terminal" type="button">
+                
+<button id="operationsTerminal" class="terminal" type="button">
                     <span class="monitor-screen">
                         <span class="monitor-status">EN ESPERA</span>
                         <span class="monitor-code">T-01</span>
@@ -86,7 +87,8 @@
                     <span class="terminal-label">OPERACIONES</span>
                 </button>
 
-                <button class="terminal" type="button">
+                
+<button id="networkTerminal" class="terminal" type="button">
                     <span class="monitor-screen">
                         <span class="monitor-status">SEÑAL INESTABLE</span>
                         <span class="monitor-code">N-07</span>
@@ -94,7 +96,8 @@
                     <span class="terminal-label">RED Y COMUNICACIONES</span>
                 </button>
 
-                <button class="terminal" type="button">
+                
+<button id="systemsTerminal" class="terminal" type="button">
                     <span class="monitor-screen">
                         <span class="monitor-status">DIAGNÓSTICO</span>
                         <span class="monitor-code">T-02</span>

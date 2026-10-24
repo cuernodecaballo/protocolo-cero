@@ -28,6 +28,56 @@ const scoreValue = document.getElementById("scoreValue");
 
 const terminals = document.querySelectorAll(".terminal");
 
+ // ---------- REGISTRO DE INCIDENCIAS ----------
+
+const desk = document.querySelector(".desk");
+let incidentLog = desk?.querySelector(".incident-log");
+
+if (!incidentLog && desk) {
+    incidentLog = document.createElement("div");
+    incidentLog.className = "incident-log";
+
+    const initialMessage = desk.querySelector("p");
+
+    if (initialMessage) {
+        initialMessage.replaceWith(incidentLog);
+    } else {
+        desk.appendChild(incidentLog);
+    }
+}
+
+const MAX_INCIDENCES = 8;
+
+function registerIncident(message, type = "SYSTEM") {
+    if (!incidentLog) return;
+
+    const timestamp = new Date().toLocaleTimeString("es-PY", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    });
+
+    const entry = document.createElement("div");
+    entry.className = "incident-entry";
+    entry.dataset.type = type;
+
+    const time = document.createElement("span");
+    time.className = "incident-time";
+    time.textContent = timestamp + " // ";
+
+    const description = document.createElement("span");
+    description.textContent = message;
+
+    entry.append(time, description);
+    incidentLog.appendChild(entry);
+
+    while (incidentLog.children.length > MAX_INCIDENCES) {
+        incidentLog.firstElementChild.remove();
+    }
+
+    incidentLog.scrollTop = incidentLog.scrollHeight;
+}
 
 // ---------- 2. BANCO DE DESAFÍOS ----------
 // Cada pregunta contiene los mismos campos.
@@ -347,13 +397,17 @@ const results = new Map();
 
 
 startButton.addEventListener("click", function () {
+    gameAudio.musica.pause();
+gameAudio.musica.currentTime = 0;
     startScreen.hidden = true;
     officeScreen.hidden = false;
 
     AudioSystem.startAmbient();
-    AudioSystem.playNoise(0.5, 0.16);
+AudioSystem.playStartup();
+AudioSystem.playNoise(0.5, 0.08);
 
     updateHUD();
+    registerIncident("Turno iniciado. Operador: Bryan Epstein.", "SYSTEM");
 });
 
 const restartButton = document.getElementById("restartButton");
@@ -363,23 +417,35 @@ restartButton.addEventListener("click", function () {
     AudioSystem.playNoise(0.3, 0.12);
 });
 
+ // ---------- 5. SELECCIÓN DE CONSOLAS ----------
 
+const operationsTerminal = document.getElementById("operationsTerminal");
+const networkTerminal = document.getElementById("networkTerminal");
+const systemsTerminal = document.getElementById("systemsTerminal");
 
-// ---------- 5. SELECCIÓN DEL PRÓXIMO DESAFÍO ----------
+operationsTerminal.addEventListener("click", function () {
+    registerIncident("Terminal abierto: T-01", "INFO");
 
-terminals.forEach(function (terminal) {
-    terminal.addEventListener("click", function () {
-        const pendingChallenge = challenges.find(function (challenge) {
-            return !results.has(challenge.id);
-        });
-
-        if (pendingChallenge) {
-            openChallenge(pendingChallenge, terminal);
-        } else {
-            showFinalSummary();
-            summaryVisible = true;
-        }
+    const pendingChallenge = challenges.find(function (challenge) {
+        return !results.has(challenge.id);
     });
+
+    if (pendingChallenge) {
+        openChallenge(pendingChallenge, operationsTerminal);
+    } else {
+        showFinalSummary();
+        summaryVisible = true;
+    }
+});
+
+networkTerminal.addEventListener("click", function () {
+    registerIncident("Terminal abierto: N-07", "INFO");
+    showConsoleInfo("network");
+});
+
+systemsTerminal.addEventListener("click", function () {
+    registerIncident("Terminal abierto: T-02", "INFO");
+    showConsoleInfo("systems");
 });
 
 
@@ -437,6 +503,99 @@ summaryVisible = false;
     });
 }
 
+ // ---------- 7. INFORMACIÓN DE LAS CONSOLAS ----------
+
+function showConsoleInfo(type) {
+    currentChallenge = null;
+    answered = false;
+    summaryVisible = true;
+
+    AudioSystem.playNoise(0.22, 0.07);
+
+    const completed = results.size;
+    const total = challenges.length;
+    const pending = total - completed;
+    const percentage = Math.round((completed / total) * 100);
+
+    let area;
+    let code;
+    let title;
+    let status;
+    let message;
+
+    if (type === "systems") {
+        area = "SISTEMAS";
+        code = "T-02";
+        title = "DIAGNÓSTICO TÉCNICO";
+
+        status =
+            "Desafíos completados: " + completed + "/" + total +
+            ". Pendientes: " + pending + ".";
+
+        message =
+            "INTEGRIDAD: " + integrity + "%.\n" +
+            "PUNTUACIÓN: " + score + "/" + (total * 10) + ".\n" +
+            "PROGRESO ACADÉMICO: " + percentage + "%.\n" +
+            (integrity <= 30
+                ? "ALERTA: integridad crítica. El sistema está gravemente comprometido."
+                : integrity <= 60
+                    ? "ADVERTENCIA: integridad reducida. Revisá los errores registrados."
+                    : "Estado de integridad dentro de los parámetros de observación.");
+    } else {
+        area = "RED Y COMUNICACIONES";
+        code = "N-07";
+        title = "ESTADO DE LA CONEXIÓN";
+
+        if (completed === total) {
+            status = "Todos los registros académicos fueron recibidos.";
+            message =
+                "CANAL RESTAURADO.\n" +
+                "Los " + total + " registros están disponibles.\n" +
+                "El informe final está listo para su consulta.";
+        } else if (completed >= Math.ceil(total / 2)) {
+            status = "Señal parcialmente restaurada.";
+            message =
+                "REGISTROS RECIBIDOS: " + completed + "/" + total + ".\n" +
+                "Quedan " + pending + " registros pendientes.\n" +
+                "La conexión mejora, pero todavía hay datos sin recuperar.";
+        } else if (completed > 0) {
+            status = "Señal débil. Se detectan transmisiones parciales.";
+            message =
+                "REGISTROS RECIBIDOS: " + completed + "/" + total + ".\n" +
+                "Quedan " + pending + " registros pendientes.\n" +
+                "Continuá con las operaciones para recuperar la transmisión.";
+        } else {
+            status = "Enlace con el servidor central: inestable.";
+            message =
+                "No se recibieron registros académicos.\n" +
+                "El canal permanece en observación.\n" +
+                "Iniciá las operaciones para establecer la transmisión.";
+        }
+    }
+
+    challengeUnit.textContent = code + " // " + area;
+    challengeTitle.textContent = title;
+    challengeQuestion.textContent = status;
+
+    answerOptions.replaceChildren();
+    answerOptions.hidden = true;
+
+    feedback.textContent = message;
+    feedback.hidden = false;
+    feedback.className = "feedback";
+
+    continueButton.hidden = false;
+    continueButton.textContent = "VOLVER A LA OFICINA";
+
+    officeMessage.textContent = code + " / " + area;
+
+    challengePanel.hidden = false;
+    challengePanel.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+}
+
 
 // ---------- 7. COMPROBAR RESPUESTAS ----------
 
@@ -447,6 +606,18 @@ function checkAnswer(selectedIndex) {
 
     const isCorrect =
         selectedIndex === currentChallenge.correct;
+            if (isCorrect) {
+        registerIncident(
+            "Desafío " + currentChallenge.id + " resuelto correctamente.",
+            "SUCCESS"
+        );
+    } else {
+        registerIncident(
+            "Error en desafío " + currentChallenge.id +
+            ". Integridad actual: " + integrity + "%.",
+            "ERROR"
+        );
+    }
 
     const buttons = answerOptions.querySelectorAll("button");
 
@@ -472,8 +643,21 @@ if (isCorrect) {
     if (integrity <= 30) {
         AudioSystem.playNoise(0.8, 0.14);
     }
+    if (isCorrect) {
+    registerIncident(
+        "Desafío " + currentChallenge.id +
+        " resuelto correctamente. Integridad: " +
+        integrity + "%.",
+        "SUCCESS"
+    );
+} else {
+    registerIncident(
+        "Error en desafío " + currentChallenge.id +
+        ". Integridad restante: " + integrity + "%.",
+        "ERROR"
+    );
 }
-
+}
 
     results.set(currentChallenge.id, {
         selectedIndex: selectedIndex,
@@ -559,6 +743,7 @@ function updateIntegrityEffects() {
 // ---------- 10. MOSTRAR EL RESUMEN FINAL ----------
 
 function showFinalSummary() {summaryVisible = true;
+    AudioSystem.playMetalHit();
     challengePanel.hidden = false;
 
     challengeUnit.textContent =
@@ -672,6 +857,7 @@ function restartGame() {
 
     officeMessage.textContent =
         "TODOS LOS SISTEMAS EN OBSERVACIÓN";
+            registerIncident("Sistema reiniciado. Nuevo turno preparado.", "WARNING");
 
     AudioSystem.playNoise(0.3, 0.12);
 }
@@ -690,7 +876,23 @@ continueButton.addEventListener("click", function () {
 /* =====================================
    PROTOCOLO CERO // SISTEMA DE AUDIO
    ===================================== */
+// Audios del juego
+const gameAudio = {
+    musica: new Audio("audio/musica.mp3"),
+    ambiente: new Audio("audio/ambiente.mp3"),
+    metal: new Audio("audio/metal.mp3"),
+    interferencia: new Audio("audio/interferencia.wav")
+};
 
+
+gameAudio.musica.loop = true;
+gameAudio.musica.volume = 0.70;
+
+gameAudio.ambiente.loop = true;
+gameAudio.ambiente.volume = 0.30;
+
+gameAudio.metal.volume = 0.35;
+gameAudio.interferencia.volume = 0.25;
 const AudioSystem = {
     context: null,
     master: null,
@@ -739,25 +941,35 @@ const AudioSystem = {
 
         this.started = true;
     },
+    
+    
+    
+
+playStartup() {
+    if (!this.enabled) return;
+
+    this.init();
+
+    if (this.context && this.context.state === "suspended") {
+        this.context.resume();
+    }
+
+    this.playNoise(0.4, 0.08);
+    this.playTone(440, 0.25, 0.04);
+
+    window.setTimeout(() => {
+        this.playDistantAlarm();
+    }, 1200);
+
+},
 
     startAmbient() {
-        if (!this.enabled) return;
+    if (!this.enabled) return;
 
-        this.init();
-        if (!this.context) return;
-
-        this.context.resume();
-
-        this.ambientGain.gain.cancelScheduledValues(
-            this.context.currentTime
-        );
-
-        this.ambientGain.gain.setTargetAtTime(
-            0.008,
-            this.context.currentTime,
-            2
-        );
-    },
+    gameAudio.ambiente.play().catch(error => {
+        console.warn("No se pudo reproducir el ambiente:", error);
+    });
+},
 
     stopAmbient() {
         if (!this.context || !this.ambientGain) return;
@@ -770,46 +982,17 @@ const AudioSystem = {
     },
 
     playNoise(duration = 0.18, volume = 0.12) {
-        if (!this.enabled || !this.context) return;
+    if (!this.enabled) return;
 
-        const ctx = this.context;
-        const buffer = ctx.createBuffer(
-            1,
-            Math.ceil(ctx.sampleRate * duration),
-            ctx.sampleRate
+    gameAudio.interferencia.currentTime = 0;
+gameAudio.interferencia.playbackRate = 4;
+    gameAudio.interferencia.play().catch(error => {
+        console.warn(
+            "No se pudo reproducir interferencia.wav:",
+            error
         );
-
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < data.length; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-
-        const source = ctx.createBufferSource();
-        const gain = ctx.createGain();
-        const filter = ctx.createBiquadFilter();
-
-        filter.type = "bandpass";
-        filter.frequency.value = 1500;
-        filter.Q.value = 0.7;
-
-        gain.gain.setValueAtTime(
-            volume,
-            ctx.currentTime
-        );
-        gain.gain.exponentialRampToValueAtTime(
-            0.001,
-            ctx.currentTime + duration
-        );
-
-        source.buffer = buffer;
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.master);
-
-        source.start();
-        source.stop(ctx.currentTime + duration);
-    },
+    });
+},
 
     playTone(frequency = 440, duration = 0.2, volume = 0.08) {
         if (!this.enabled || !this.context) return;
@@ -836,49 +1019,96 @@ const AudioSystem = {
         oscillator.start();
         oscillator.stop(ctx.currentTime + duration);
     },
-
     
-toggle(){
+    // Golpe metálico distante
+    playMetalHit() {
+    if (!this.enabled) return;
+
+    gameAudio.metal.currentTime = 0;
+    gameAudio.metal.play().catch(error => {
+        console.warn("No se pudo reproducir el aviso de tareas:", error);
+    });
+},
+
+    // Alarma lejana y apagada
+    playDistantAlarm() {
+        if (!this.enabled || !this.context) return;
+
+        const ctx = this.context;
+        const now = ctx.currentTime;
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(280, now);
+        oscillator.frequency.linearRampToValueAtTime(350, now + 0.7);
+        oscillator.frequency.linearRampToValueAtTime(280, now + 1.5);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.022, now + 0.25);
+        gain.gain.setValueAtTime(0.022, now + 0.8);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+
+        oscillator.connect(gain);
+        gain.connect(this.master);
+
+        oscillator.start(now);
+        oscillator.stop(now + 1.85);
+    },
+
+toggle() {
     this.enabled = !this.enabled;
 
+    Object.values(gameAudio).forEach(audio => {
+        audio.muted = !this.enabled;
+    });
+
     if (this.enabled) {
-        if (!this.context) this.init();
+        if (!gameAudio.musica.paused || !gameAudio.ambiente.paused) {
+            // Los audios que ya estaban reproduciéndose continúan.
+        } else {
+            const startScreen = document.getElementById("startScreen");
+            const officeScreen = document.getElementById("officeScreen");
 
-        if (this.context) {
-            this.context.resume();
-
-            this.master.gain.setTargetAtTime(
-                0.35,
-                this.context.currentTime,
-                0.05
-            );
-
-            this.startAmbient();
-        }
-    } else {
-        if (this.context) {
-            this.master.gain.setTargetAtTime(
-                0,
-                this.context.currentTime,
-                0.05
-            );
+            if (startScreen && !startScreen.hidden) {
+                gameAudio.musica.play().catch(() => {});
+            } else if (officeScreen && !officeScreen.hidden) {
+                gameAudio.ambiente.play().catch(() => {});
+            }
         }
     }
 
     const button = document.getElementById("soundToggle");
+    // Música de la pantalla inicial
+document.addEventListener("DOMContentLoaded", function () {
+    const startScreen = document.getElementById("startScreen");
 
+    if (startScreen && !startScreen.hidden && AudioSystem.enabled) {
+        gameAudio.musica.play().catch(() => {
+            // El navegador puede exigir una interacción del usuario.
+        });
+    }
+});
     if (button) {
         button.textContent = this.enabled
             ? "SONIDO: ACTIVADO"
             : "SONIDO: SILENCIADO";
-                    button.setAttribute(
-            "aria-pressed",
-            String(this.enabled)
-        );
+
+        button.setAttribute("aria-pressed", String(this.enabled));
     }
 }
 };
+document.addEventListener("click", function iniciarMusica() {
+    const startScreen = document.getElementById("startScreen");
 
+    if (!AudioSystem.enabled || !startScreen || startScreen.hidden) {
+        return;
+    }
+
+    gameAudio.musica.play().catch(error => {
+        console.warn("No se pudo reproducir musica.mp3:", error);
+    });
+});
 // Conectar el botón para activar y silenciar el audio
 document.getElementById("soundToggle").addEventListener("click", function () {
     AudioSystem.toggle();
